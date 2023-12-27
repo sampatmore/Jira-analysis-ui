@@ -38,14 +38,6 @@ fun CycleTimeHistogramChart(
 
     val slider = remember { MutableStateFlow(0f..1f) }
 
-    val dateStart = slider.map {
-        dateRangeStart + (dateRangeEnd - dateRangeStart) * it.start.toDouble()
-    }
-
-    val dateEnd = slider.map {
-        dateRangeStart + (dateRangeEnd - dateRangeStart) * it.start.toDouble()
-    }
-
     val dateRange = slider.map {
         val range = (dateRangeEnd - dateRangeStart)
         dateRangeStart + range * it.start.toDouble()..dateRangeStart + range * it.endInclusive.toDouble()
@@ -94,6 +86,17 @@ fun CycleTimeHistogramChart(
     modifier: Modifier = Modifier,
     frequencyMap: Map<Int, Int>,
 ) {
+
+    if (frequencyMap.keys.max() == 0) {
+        println("xAxis has no length ($frequencyMap)")
+        return
+    }
+
+    if (frequencyMap.values.max() == 0) {
+        println("yAxis has no length ($frequencyMap)")
+        return
+    }
+
     ChartLayout(title = { Text("Cycle time distribution") }) {
 
         XYGraph(
