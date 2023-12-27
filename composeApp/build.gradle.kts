@@ -57,6 +57,7 @@ kotlin {
             implementation(compose.components.resources)
             implementation(projects.shared)
 
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
             implementation("io.github.koalaplot:koalaplot-core:0.5.1")
         }
         desktopMain.dependencies {

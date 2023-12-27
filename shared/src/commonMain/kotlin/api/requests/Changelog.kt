@@ -7,9 +7,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.LocalTime
 
 class Changelog(
     private val jiraClient: JiraClient,
@@ -19,7 +16,7 @@ class Changelog(
         issueIds: List<String>,
         fromStatus: String,
         toStatus: String,
-    ): List<Long> {
+    ): List<IssueTimeBetween> {
         return coroutineScope {
             issueIds.map {
                 async { daysBetweenStatuses(it, fromStatus, toStatus) }
@@ -30,15 +27,21 @@ class Changelog(
 
     suspend fun daysBetweenStatuses(
         issueId: String,
-        fromStatus: String,
-        toStatus: String,
-    ): Long? {
+        from: String,
+        to: String,
+    ): IssueTimeBetween? {
         val transitionLog = statusChangeForIssue(issueId)
 
-        val from = transitionLog.transitions.find { it.to == fromStatus }?.date ?: return null
-        val to = transitionLog.transitions.find { it.to == toStatus }?.date ?: return null
+        val fromDate = transitionLog.transitions.find { it.to == from }?.date ?: return null
+        val toDate = transitionLog.transitions.find { it.to == to }?.date ?: return null
 
-        return (to - from).inWholeDays
+        return IssueTimeBetween(
+            issueId = issueId,
+            from = from,
+            fromDate = fromDate,
+            to = to,
+            toDate = toDate,
+        )
     }
 
     suspend fun statusChangeForIssue(issueId: String): IssueTransitionLog {
@@ -71,3 +74,14 @@ data class StatusTransition(
     val from: String,
     val to: String,
 )
+
+data class IssueTimeBetween(
+    val issueId: String,
+    val from: String,
+    val fromDate: Instant,
+    val to: String,
+    val toDate: Instant,
+) {
+
+    val wholeDays: Long get() = (toDate - fromDate).inWholeDays
+}

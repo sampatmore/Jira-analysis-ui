@@ -20,6 +20,7 @@ import io.github.koalaplot.core.xygraph.LinearAxisModel
 import io.github.koalaplot.core.xygraph.XYGraph
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.Instant
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 
 @OptIn(ExperimentalResourceApi::class, ExperimentalKoalaPlotApi::class)
@@ -68,7 +69,7 @@ fun App() {
 
             val daysFromStartOfWorkValue by daysFromStartOfWork.collectAsState(emptyList())
 
-            val frequencyMap = daysFromStartOfWorkValue.groupingBy { it }.eachCount().toHistogram()
+            val frequencyMap = daysFromStartOfWorkValue.groupingBy { it.wholeDays }.eachCount().toHistogram()
 
             if (frequencyMap.isNotEmpty()) {
                 ChartLayout(title = { Text("Cycle time distribution") }) {
