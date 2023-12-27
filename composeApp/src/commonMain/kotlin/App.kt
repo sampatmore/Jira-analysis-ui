@@ -12,6 +12,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import api.requests.Changelog
 import api.requests.JiraQuery
+import chart.CycleTimeHistogramChart
+import chart.toCycleTimeHistogram
 import io.github.koalaplot.core.ChartLayout
 import io.github.koalaplot.core.bar.DefaultVerticalBar
 import io.github.koalaplot.core.bar.VerticalBarPlot
@@ -68,44 +70,12 @@ fun App() {
             Text("Number of items in team: ${teamIssuesValue.size}")
 
             val daysFromStartOfWorkValue by daysFromStartOfWork.collectAsState(emptyList())
+            
 
-            val frequencyMap = daysFromStartOfWorkValue.groupingBy { it.wholeDays }.eachCount().toHistogram()
-
-            if (frequencyMap.isNotEmpty()) {
-                ChartLayout(title = { Text("Cycle time distribution") }) {
-
-                    XYGraph(
-                        xAxisModel = LinearAxisModel(range = 0f..frequencyMap.keys.max().toFloat()),
-                        yAxisModel = LinearAxisModel(range = 0f..frequencyMap.values.max().toFloat()),//: AxisModel<Y>,
-                    ) {
-                        VerticalBarPlot(
-                            xData = frequencyMap.keys.map { it.toFloat() },
-                            yData = frequencyMap.values.map { it.toFloat() },
-                            barWidth = 0.9f,
-                            bar = {
-                                DefaultVerticalBar(
-                                    brush = SolidColor(Color.Blue),
-                                    modifier = Modifier.fillMaxWidth(0.9f),
-                                )
-                            }
-                        )
-                    }
-                }
+            if (daysFromStartOfWorkValue.isNotEmpty()) {
+                val frequencyMap = daysFromStartOfWorkValue.groupingBy { it.wholeDays }.eachCount().toCycleTimeHistogram()
+                CycleTimeHistogramChart(frequencyMap)
             }
         }
     }
-}
-
-fun Map<Long, Int>.toHistogram(): Map<Int, Int> {
-    if (isEmpty()) return emptyMap()
-
-    val map = HashMap<Int, Int>()
-
-    var i = 0L
-    do {
-        map[i.toInt()] = getOrElse(i) { 0 }
-        i++
-    } while (i <= keys.max())
-
-    return map
 }
