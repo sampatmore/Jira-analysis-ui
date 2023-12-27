@@ -1,5 +1,6 @@
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
@@ -8,24 +9,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import api.requests.Changelog
 import api.requests.JiraQuery
 import chart.CycleTimeHistogramChart
-import chart.toCycleTimeHistogram
-import io.github.koalaplot.core.ChartLayout
-import io.github.koalaplot.core.bar.DefaultVerticalBar
-import io.github.koalaplot.core.bar.VerticalBarPlot
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
-import io.github.koalaplot.core.xygraph.LinearAxisModel
-import io.github.koalaplot.core.xygraph.XYGraph
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Instant
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 
-@OptIn(ExperimentalResourceApi::class, ExperimentalKoalaPlotApi::class)
+@OptIn(ExperimentalResourceApi::class, ExperimentalKoalaPlotApi::class, ExperimentalMaterialApi::class)
 @Composable
 fun App() {
 
@@ -37,7 +29,7 @@ fun App() {
 
     val teamIssues = team.map {
         if (it.isNotBlank()) {
-            jiraQuery.issuesForTeam(teamId = "39")
+            jiraQuery.issuesForTeam(teamId = it)
         } else emptyList()
     }
 
@@ -70,11 +62,10 @@ fun App() {
             Text("Number of items in team: ${teamIssuesValue.size}")
 
             val daysFromStartOfWorkValue by daysFromStartOfWork.collectAsState(emptyList())
-            
+
 
             if (daysFromStartOfWorkValue.isNotEmpty()) {
-                val frequencyMap = daysFromStartOfWorkValue.groupingBy { it.wholeDays }.eachCount().toCycleTimeHistogram()
-                CycleTimeHistogramChart(frequencyMap)
+                CycleTimeHistogramChart(issueTimes = daysFromStartOfWorkValue)
             }
         }
     }

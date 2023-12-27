@@ -6,8 +6,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class QueryIssueListResponse(
-    @SerialName("expand")
-    val expand: String,
     @SerialName("issues")
     val issues: List<Issue>,
     @SerialName("maxResults")
