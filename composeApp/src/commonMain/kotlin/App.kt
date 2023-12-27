@@ -1,4 +1,6 @@
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.MaterialTheme
@@ -15,6 +17,7 @@ import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import project.FilteredIssuesStatsPanel
 import project.ProjectConfigPanel
 
 @OptIn(ExperimentalKoalaPlotApi::class, ExperimentalMaterialApi::class)
@@ -61,20 +64,28 @@ fun App() {
 
             val statusList: List<String> by statuses.collectAsState(emptyList())
 
-            ProjectConfigPanel(
-                project = projectValue,
-                team = teamValue,
-                totalIssues = teamIssuesValue.size,
-                filteredIssues = daysFromStartOfWorkValue.size,
-                statusList = statusList,
-                fromStatus = fromStatus.value,
-                toStatus = toStatus.value,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                ProjectConfigPanel(
+                    project = projectValue,
+                    team = teamValue,
+                    statusList = statusList,
+                    fromStatus = fromStatus.value,
+                    toStatus = toStatus.value,
 
-                onProjectChange = { project.value = it },
-                onTeamChanged = { team.value = it },
-                onFromStatus = { fromStatus.value = it },
-                onToStatus = { toStatus.value = it },
-            )
+                    onProjectChange = { project.value = it },
+                    onTeamChanged = { team.value = it },
+                    onFromStatus = { fromStatus.value = it },
+                    onToStatus = { toStatus.value = it },
+                )
+
+                FilteredIssuesStatsPanel(
+                    teamIssues = teamIssuesValue,
+                    filteredByStatusTransition = daysFromStartOfWorkValue,
+                )
+            }
 
             if (daysFromStartOfWorkValue.isNotEmpty()) {
                 CycleTimeHistogramChart(issueTimes = daysFromStartOfWorkValue)
