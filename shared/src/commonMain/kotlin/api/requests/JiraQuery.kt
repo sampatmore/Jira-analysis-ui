@@ -2,6 +2,7 @@ package api.requests
 
 import api.JiraClient
 import api.responses.queryIssueList.QueryIssueListResponse
+import api.responses.queryStatuses.QueryStatusesResponseItem
 
 class JiraQuery(
     private val jiraClient: JiraClient,
@@ -17,5 +18,13 @@ class JiraQuery(
                 issueIds
             }
         }
+    }
+
+    suspend fun statusesInProject(projectId: String): List<String> {
+        val response = jiraClient.get<List<QueryStatusesResponseItem>>(path = "project/$projectId/statuses")
+
+        return response.flatMap { it.statuses }
+            .map { it.name }
+            .distinct()
     }
 }

@@ -1,31 +1,33 @@
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.material.TextField
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import api.requests.Changelog
 import api.requests.JiraQuery
 import chart.CycleTimeHistogramChart
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
-import org.jetbrains.compose.resources.ExperimentalResourceApi
 
-@OptIn(ExperimentalResourceApi::class, ExperimentalKoalaPlotApi::class, ExperimentalMaterialApi::class)
+@OptIn(ExperimentalKoalaPlotApi::class, ExperimentalMaterialApi::class)
 @Composable
 fun App() {
 
     val client = client()
-    val changelog = Changelog(client())
-    val jiraQuery = JiraQuery(client())
+    val changelog = Changelog(client)
+    val jiraQuery = JiraQuery(client)
 
-    val team = MutableStateFlow("")
+    val project = MutableStateFlow("SO")
+    val team = MutableStateFlow("39")
 
     val teamIssues = team.map {
         if (it.isNotBlank()) {
@@ -33,30 +35,101 @@ fun App() {
         } else emptyList()
     }
 
-    val daysFromStartOfWork = teamIssues.map {
+    val statuses = project.map {
+        jiraQuery.statusesInProject(it)
+    }
+
+    val fromStatus = MutableStateFlow("In Progress")
+    val toStatus = MutableStateFlow("Done")
+
+    val daysFromStartOfWork = combine(teamIssues, fromStatus, toStatus) { issues, from, to ->
         changelog.daysBetweenStatuses(
-            issueIds = it,
-            fromStatus = "In Progress",
-            toStatus = "Done",
+            issueIds = issues,
+            fromStatus = from,
+            toStatus = to,
         )
     }
 
-
-//    val frequencyMap = daysFromStartOfWork.groupingBy { it }.eachCount().toSortedMap()
-//    println("Distribution: $frequencyMap")
 
     MaterialTheme {
 
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
 
+            val projectValue by team.collectAsState()
             val teamValue by team.collectAsState()
-            TextField(
-                value = teamValue,
-                onValueChange = {
-                    team.value = it
-                },
-                label = { Text("Team") }
-            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .border(1.dp, color = Color.Black)
+                ) {
+                    TextField(
+                        value = projectValue,
+                        onValueChange = {
+                            project.value = it
+                        },
+                        label = { Text("Team") }
+                    )
+
+                    TextField(
+                        value = teamValue,
+                        onValueChange = {
+                            team.value = it
+                        },
+                        label = { Text("Team") }
+                    )
+
+
+                    val statusList by statuses.collectAsState(emptyList())
+
+                    var fromStatusExpanded by remember { mutableStateOf(false) }
+                    Text(
+                        text = "To: ${fromStatus.value}",
+                        modifier = Modifier.clickable { fromStatusExpanded = true }
+                    )
+                    DropdownMenu(
+                        expanded = fromStatusExpanded,
+                        onDismissRequest = { fromStatusExpanded = false },
+                        content = {
+                            statusList.forEach {
+                                DropdownMenuItem(
+                                    onClick = {
+                                        fromStatus.value = it
+                                        fromStatusExpanded = false
+                                    }
+                                ) {
+                                    Text(it)
+                                }
+                            }
+                        }
+                    )
+
+                    var toStatusExpanded by remember { mutableStateOf(false) }
+                    Text(
+                        text = "To: ${toStatus.value}",
+                        modifier = Modifier.clickable { toStatusExpanded = true }
+                    )
+                    DropdownMenu(
+                        expanded = toStatusExpanded,
+                        onDismissRequest = { toStatusExpanded = false },
+                        content = {
+                            statusList.forEach {
+                                DropdownMenuItem(
+                                    onClick = {
+                                        toStatus.value = it
+                                        toStatusExpanded = false
+                                    }
+                                ) {
+                                    Text(it)
+                                }
+                            }
+                        }
+                    )
+                }
+            }
 
             val teamIssuesValue by teamIssues.collectAsState(emptyList())
             Text("Number of items in team: ${teamIssuesValue.size}")
