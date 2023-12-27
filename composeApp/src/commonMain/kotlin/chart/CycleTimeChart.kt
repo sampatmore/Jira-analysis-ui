@@ -22,7 +22,6 @@ import io.github.koalaplot.core.xygraph.LinearAxisModel
 import io.github.koalaplot.core.xygraph.XYGraph
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -39,26 +38,28 @@ fun CycleTimeHistogramChart(
 
     val slider = remember { MutableStateFlow(0f..1f) }
 
+    val dateStart = slider.map {
+        dateRangeStart + (dateRangeEnd - dateRangeStart) * it.start.toDouble()
+    }
+
+    val dateEnd = slider.map {
+        dateRangeStart + (dateRangeEnd - dateRangeStart) * it.start.toDouble()
+    }
+
+    val dateRange = slider.map {
+        val range = (dateRangeEnd - dateRangeStart)
+        dateRangeStart + range * it.start.toDouble()..dateRangeStart + range * it.endInclusive.toDouble()
+    }
+
     if (issueTimes.isNotEmpty()) {
-        val frequencyMap = issueTimes.groupingBy { it.wholeDays }.eachCount().toCycleTimeHistogram()
+
         Column(
             modifier = modifier,
         ) {
-
-
-            val dateStart by slider
-                .map {
-                    val startInstant = dateRangeStart + (dateRangeEnd - dateRangeStart) * it.start.toDouble()
-                    startInstant.toLocalDateTime(TimeZone.UTC).date
-                }.collectAsState(Instant.DISTANT_PAST)
-
-            val dateEnd by slider.map {
-                val endInstant = dateRangeStart + (dateRangeEnd - dateRangeStart) * it.endInclusive.toDouble()
-                endInstant.toLocalDateTime(TimeZone.UTC).date
-            }.collectAsState(Instant.DISTANT_FUTURE)
+            val dateRangeValue by dateRange.collectAsState(null)
 
             Row {
-                Text("Start\n${dateStart}")
+                Text("Start\n${dateRangeValue?.start?.toLocalDateTime(TimeZone.UTC)?.date}")
                 RangeSlider(
                     modifier = Modifier.fillMaxWidth(0.8f),
                     value = slider.value,
@@ -66,12 +67,21 @@ fun CycleTimeHistogramChart(
                         slider.value = it
                     },
                 )
-                Text("End\n${dateEnd}")
+                Text("End\n${dateRangeValue?.endInclusive?.toLocalDateTime(TimeZone.UTC)?.date}")
             }
 
-            CycleTimeHistogramChart(
-                frequencyMap = frequencyMap,
-            )
+            val frequencyMap by dateRange.map {range ->
+                issueTimes.filter { it.fromDate in range }
+                    .groupingBy { it.wholeDays }
+                    .eachCount()
+                    .toCycleTimeHistogram()
+            }.collectAsState(emptyMap())
+
+            if (frequencyMap.isNotEmpty()) {
+                CycleTimeHistogramChart(
+                    frequencyMap = frequencyMap,
+                )
+            }
         }
     } else {
         Text("No values to display")
