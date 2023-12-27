@@ -56,6 +56,8 @@ kotlin {
             @OptIn(ExperimentalComposeLibrary::class)
             implementation(compose.components.resources)
             implementation(projects.shared)
+
+            implementation("io.github.koalaplot:koalaplot-core:0.5.1")
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)

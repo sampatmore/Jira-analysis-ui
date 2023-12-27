@@ -1,22 +1,28 @@
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import api.requests.Changelog
 import api.requests.JiraQuery
+import io.github.koalaplot.core.ChartLayout
+import io.github.koalaplot.core.bar.DefaultVerticalBar
+import io.github.koalaplot.core.bar.VerticalBarPlot
+import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
+import io.github.koalaplot.core.xygraph.LinearAxisModel
+import io.github.koalaplot.core.xygraph.XYGraph
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import org.jetbrains.compose.resources.ExperimentalResourceApi
-import org.jetbrains.compose.resources.painterResource
 
-@OptIn(ExperimentalResourceApi::class)
+@OptIn(ExperimentalResourceApi::class, ExperimentalKoalaPlotApi::class)
 @Composable
 fun App() {
 
@@ -61,11 +67,44 @@ fun App() {
             Text("Number of items in team: ${teamIssuesValue.size}")
 
             val daysFromStartOfWorkValue by daysFromStartOfWork.collectAsState(emptyList())
-            Text("Number of items completed after start of work: ${daysFromStartOfWorkValue.size}")
-            println("Average number of days to complete: ${daysFromStartOfWorkValue.average()}")
 
-            //    val frequencyMap = daysFromStartOfWork.groupingBy { it }.eachCount().toSortedMap()
+            val frequencyMap = daysFromStartOfWorkValue.groupingBy { it }.eachCount().toHistogram()
 
+            if (frequencyMap.isNotEmpty()) {
+                ChartLayout(title = { Text("Cycle time distribution") }) {
+
+                    XYGraph(
+                        xAxisModel = LinearAxisModel(range = 0f..frequencyMap.keys.max().toFloat()),
+                        yAxisModel = LinearAxisModel(range = 0f..frequencyMap.values.max().toFloat()),//: AxisModel<Y>,
+                    ) {
+                        VerticalBarPlot(
+                            xData = frequencyMap.keys.map { it.toFloat() },
+                            yData = frequencyMap.values.map { it.toFloat() },
+                            barWidth = 0.9f,
+                            bar = {
+                                DefaultVerticalBar(
+                                    brush = SolidColor(Color.Blue),
+                                    modifier = Modifier.fillMaxWidth(0.9f),
+                                )
+                            }
+                        )
+                    }
+                }
+            }
         }
     }
+}
+
+fun Map<Long, Int>.toHistogram(): Map<Int, Int> {
+    if (isEmpty()) return emptyMap()
+
+    val map = HashMap<Int, Int>()
+
+    var i = 0L
+    do {
+        map[i.toInt()] = getOrElse(i) { 0 }
+        i++
+    } while (i <= keys.max())
+
+    return map
 }
