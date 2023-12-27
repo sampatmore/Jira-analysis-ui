@@ -1,18 +1,20 @@
 package chart
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.RangeSlider
+import androidx.compose.material.Switch
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.unit.dp
 import api.requests.IssueTimeBetween
 import io.github.koalaplot.core.ChartLayout
 import io.github.koalaplot.core.bar.DefaultVerticalBar
@@ -62,17 +64,37 @@ fun CycleTimeHistogramChart(
                 Text("End\n${dateRangeValue?.endInclusive?.toLocalDateTime(TimeZone.UTC)?.date}")
             }
 
-            val frequencyMap by dateRange.map {range ->
+            var cumulativeEnabled by remember { mutableStateOf(true) }
+            Row(
+                modifier = Modifier.border(width = 1.dp, color = Color.Black)
+                    .padding(horizontal = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(text = "Cumulative")
+                Switch(
+                    checked = cumulativeEnabled,
+                    onCheckedChange = { cumulativeEnabled = it },
+                )
+            }
+
+            val frequencyMap by dateRange.map { range ->
                 issueTimes.filter { it.fromDate in range }
                     .groupingBy { it.wholeDays }
                     .eachCount()
                     .toCycleTimeHistogram()
-            }.collectAsState(emptyMap())
+            }
+                .collectAsState(emptyMap())
 
             if (frequencyMap.isNotEmpty()) {
-                CycleTimeHistogramChart(
-                    frequencyMap = frequencyMap,
-                )
+                if (cumulativeEnabled) {
+                    CycleTimeHistogramChart(
+                        frequencyMap = frequencyMap.cumulative(),
+                    )
+                } else {
+                    CycleTimeHistogramChart(
+                        frequencyMap = frequencyMap,
+                    )
+                }
             }
         }
     } else {
@@ -84,7 +106,7 @@ fun CycleTimeHistogramChart(
 @Composable
 fun CycleTimeHistogramChart(
     modifier: Modifier = Modifier,
-    frequencyMap: Map<Int, Int>,
+    frequencyMap: Map<Int, Float>,
 ) {
 
     if (frequencyMap.keys.max() == 0) {
@@ -92,7 +114,7 @@ fun CycleTimeHistogramChart(
         return
     }
 
-    if (frequencyMap.values.max() == 0) {
+    if (frequencyMap.values.max() == 0f) {
         println("yAxis has no length ($frequencyMap)")
         return
     }
@@ -102,11 +124,11 @@ fun CycleTimeHistogramChart(
         XYGraph(
             modifier = modifier,
             xAxisModel = LinearAxisModel(range = 0f..frequencyMap.keys.max().toFloat()),
-            yAxisModel = LinearAxisModel(range = 0f..frequencyMap.values.max().toFloat()),//: AxisModel<Y>,
+            yAxisModel = LinearAxisModel(range = 0f..frequencyMap.values.max()),//: AxisModel<Y>,
         ) {
             VerticalBarPlot(
                 xData = frequencyMap.keys.map { it.toFloat() },
-                yData = frequencyMap.values.map { it.toFloat() },
+                yData = frequencyMap.values.map { it },
                 barWidth = 0.9f,
                 bar = {
                     DefaultVerticalBar(
@@ -119,16 +141,32 @@ fun CycleTimeHistogramChart(
     }
 }
 
-fun Map<Long, Int>.toCycleTimeHistogram(): Map<Int, Int> {
+fun Map<Long, Int>.toCycleTimeHistogram(): Map<Int, Float> {
     if (isEmpty()) return emptyMap()
 
-    val map = HashMap<Int, Int>()
+    val map = HashMap<Int, Float>()
 
     var i = 0L
     do {
-        map[i.toInt()] = getOrElse(i) { 0 }
+        map[i.toInt()] = (getOrElse(i) { 0 }).toFloat()
         i++
     } while (i <= keys.max())
+
+    return map
+}
+
+fun Map<Int, Float>.cumulative(): Map<Int, Float> {
+    val map = toMutableMap()
+
+    val total = values.sum()
+
+    var i = 0
+    var cumulative = 0f
+    do {
+        cumulative += getOrElse(i) { 0f }
+        map[i] = cumulative
+        i++
+    } while (i <= size)
 
     return map
 }
